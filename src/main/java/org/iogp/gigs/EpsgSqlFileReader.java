@@ -19,7 +19,9 @@ public class EpsgSqlFileReader {
     private Map<String, EpsgEllipsoid> epsgCodeToEllipsoidsMap = new LinkedHashMap<>();
     private Map<String, EpsgDatum> epsgCodeToGeodeticDatumsMap = new LinkedHashMap<>();
     private Map<String, EpsgDatum> epsgCodeToVerticalDatumsMap = new LinkedHashMap<>();
-    private Map<String, EpsgGeodeticCrs> epsgCodeToGeodeticCrsMap = new LinkedHashMap<>();
+    private Map<String, EpsgCrs> epsgCodeToGeodeticCrsMap = new LinkedHashMap<>();
+    private Map<String, EpsgCrs> epsgCodeToVerticalCrsMap = new LinkedHashMap<>();
+    private Map<String, EpsgCrs> epsgCodeToProjectedCrsMap = new LinkedHashMap<>();
     private Map<String, EpsgCoordinateOperation> epsgCodeToConversionMap = new LinkedHashMap<>();
     private Map<String, EpsgCoordinateOperation> epsgCodeToTransformationMap = new LinkedHashMap<>();
 
@@ -47,9 +49,18 @@ public class EpsgSqlFileReader {
         return epsgCodeToPrimeMeridiansMap;
     }
 
-    public Map<String, EpsgGeodeticCrs> getEpsgCodeToGeodeticCrsMap() {
+    public Map<String, EpsgCrs> getEpsgCodeToGeodeticCrsMap() {
         return epsgCodeToGeodeticCrsMap;
     }
+    
+    public Map<String, EpsgCrs> getEpsgCodeToVerticalCrsMap() {
+        return epsgCodeToVerticalCrsMap;
+    }
+
+    public Map<String, EpsgCrs> getEpsgCodeToProjectedCrsMap() {
+        return epsgCodeToProjectedCrsMap;
+    }
+    
 
     public Map<String, EpsgCoordinateOperation> getEpsgCodeToConversionMap() {
         return epsgCodeToConversionMap;
@@ -60,7 +71,7 @@ public class EpsgSqlFileReader {
     }
 
     public void parseDataFile(File dataSqlFile) throws Exception {
-        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(dataSqlFile)))) {
+        try (BufferedReader reader = new BufferedReader(new InputStreamReader(new FileInputStream(dataSqlFile), "UTF-8"))) {
             String line = "";
             StringBuilder currentInsertQueryStringBuilder = new StringBuilder();
             while ((line = reader.readLine()) != null) {
@@ -139,6 +150,8 @@ public class EpsgSqlFileReader {
                 return new EpsgAliasIdentifier(EpsgInsertQuery.TableType.UNIT_OF_MEASURE, referenceEpsgCode);
             case "Datum":
                 return new EpsgAliasIdentifier(EpsgInsertQuery.TableType.DATUM, referenceEpsgCode);
+            case "Coordinate Reference System":
+                return new EpsgAliasIdentifier(EpsgInsertQuery.TableType.CRS, referenceEpsgCode);
             default:
                 return null;
         }
@@ -293,7 +306,10 @@ public class EpsgSqlFileReader {
     private void parseCrsQuery(EpsgInsertQuery query) {
         String[] tokens = query.getValues();
         String epsgCode = tokens[0];
-
+        if (epsgCode.equals("6184")) {
+            System.out.println("HERE");
+        }
+        
         List<String> aliasNames = new ArrayList<>();
         EpsgAliasIdentifier aliasIdentifier = new EpsgAliasIdentifier(EpsgInsertQuery.TableType.CRS, epsgCode);
         List<EpsgAlias> associatedAliases = aliasesMap.get(aliasIdentifier);
@@ -306,12 +322,16 @@ public class EpsgSqlFileReader {
             case "geographic 2D":
             case "geographic 3D":
             case "geocentric":
-                EpsgGeodeticCrs geodeticCrs = new EpsgGeodeticCrs(tokens, aliasNames.toArray(new String[0]));
+                EpsgCrs geodeticCrs = new EpsgCrs(tokens, aliasNames.toArray(new String[0]));
                 epsgCodeToGeodeticCrsMap.put(epsgCode, geodeticCrs);
                 break;
             case "projected":
+                EpsgCrs projectedCrs = new EpsgCrs(tokens, aliasNames.toArray(new String[0]));
+                epsgCodeToProjectedCrsMap.put(epsgCode, projectedCrs);
                 break;
             case "vertical":
+                EpsgCrs verticalCrs = new EpsgCrs(tokens, aliasNames.toArray(new String[0]));
+                epsgCodeToVerticalCrsMap.put(epsgCode, verticalCrs);
                 break;
             case "compound":
             case "engineering":
@@ -382,5 +402,4 @@ public class EpsgSqlFileReader {
         }
         return tokens.toArray(new String[0]);
     }
-
 }
