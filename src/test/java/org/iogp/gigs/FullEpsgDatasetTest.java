@@ -18,6 +18,8 @@ import org.opengis.referencing.IdentifiedObject;
 import org.opengis.referencing.ReferenceIdentifier;
 import org.opengis.referencing.crs.CRSAuthorityFactory;
 import org.opengis.referencing.crs.GeodeticCRS;
+import org.opengis.referencing.crs.ProjectedCRS;
+import org.opengis.referencing.crs.VerticalCRS;
 import org.opengis.referencing.cs.CSAuthorityFactory;
 import org.opengis.referencing.cs.CoordinateSystem;
 import org.opengis.referencing.datum.DatumAuthorityFactory;
@@ -33,11 +35,6 @@ import org.opengis.referencing.operation.CoordinateOperationAuthorityFactory;
  * @author Michael
  */
 public class FullEpsgDatasetTest {
-
-    @Test
-    public void testGeocentricCRS() throws Exception {
-
-    }
 
     @Test
     public void testGeodeticDatum() throws Exception {
@@ -94,7 +91,7 @@ public class FullEpsgDatasetTest {
             Assert.fail("Some geodetic datums in EPSG Database did not match what was in Apache SIS");
         }
     }
-    
+
     @Test
     public void testVerticalDatum() throws Exception {
         EpsgSqlFileReader reader = new EpsgSqlFileReader();
@@ -110,7 +107,7 @@ public class FullEpsgDatasetTest {
         Map<String, EpsgDatum> epsgVerticalDatumsMap = reader.getEpsgVerticalDatumsMap();
         for (Map.Entry<String, EpsgDatum> currentEntry : epsgVerticalDatumsMap.entrySet()) {
             String epsgCode = currentEntry.getKey();
-            EpsgDatum epsgVerticalDatum=  currentEntry.getValue();
+            EpsgDatum epsgVerticalDatum = currentEntry.getValue();
             try {
                 VerticalDatum sisVerticalDaum = datumFactory.createVerticalDatum(epsgCode);
                 if (sisVerticalDaum == null) {
@@ -283,6 +280,122 @@ public class FullEpsgDatasetTest {
     }
 
     @Test
+    public void testVerticalCRS() throws Exception {
+        EpsgSqlFileReader reader = new EpsgSqlFileReader();
+        reader.parseDataFile(new File("C:\\Users\\Michael\\GIGS_TEST\\EPSG_DB_FILES\\EPSG-v9_9_1-PostgreSQL\\PostgreSQL_Data_Script.sql"));
+
+        int numberOfMissingEntries = 0;
+        int numberOfCorrectEntries = 0;
+        int numberOfIncorrectEntries = 0;
+        int numberOfExceptionEntries = 0;
+
+        CRSAuthorityFactory authorityFactory = CRS.getAuthorityFactory("EPSG");
+
+        Map<String, EpsgCrs> epsgCodeToVerticalCrsMap = reader.getEpsgCodeToVerticalCrsMap();
+        for (Map.Entry<String, EpsgCrs> currentEntry : epsgCodeToVerticalCrsMap.entrySet()) {
+            String epsgCode = currentEntry.getKey();
+            EpsgCrs epsgVerticalCrs = currentEntry.getValue();
+            try {
+                VerticalCRS sisVerticalCrs = authorityFactory.createVerticalCRS(epsgCode);
+                if (sisVerticalCrs == null) {
+                    numberOfMissingEntries++;
+                    System.out.println("No match found for vertical crs: " + epsgVerticalCrs.getEpsgCode() + ":" + epsgVerticalCrs.getName());
+                    continue;
+                }
+                if (!epsgVerticalCrs.nameMatches(sisVerticalCrs)) {
+                    System.out.println("Name mismatch for vertical crs: " + epsgVerticalCrs.getEpsgCode() + ":" + epsgVerticalCrs.getName());
+                    numberOfIncorrectEntries++;
+                    continue;
+                }
+                VerticalDatum datum = sisVerticalCrs.getDatum();
+                if (!epsgCodeMatchesSisObject(epsgVerticalCrs.getDatumCode(), datum)) {
+                    System.out.println("Datum mismatch for vertical crs: " + epsgVerticalCrs.getEpsgCode() + ":" + epsgVerticalCrs.getName());
+                    numberOfIncorrectEntries++;
+                    continue;
+                }
+                CoordinateSystem coordinateSystem = sisVerticalCrs.getCoordinateSystem();
+                if (!epsgCodeMatchesSisObject(epsgVerticalCrs.getCoordSystemCode(), coordinateSystem)) {
+                    System.out.println("CS mismatch for vertical crs: " + epsgVerticalCrs.getEpsgCode() + ":" + epsgVerticalCrs.getName());
+                    numberOfIncorrectEntries++;
+                    continue;
+                }
+
+                numberOfCorrectEntries++;
+            } catch (Exception ex) {
+                System.out.println("Exception occured for vertical crs: " + epsgVerticalCrs.getEpsgCode() + ":" + epsgVerticalCrs.getName() + ":" + ex.getMessage());
+                numberOfExceptionEntries++;
+            }
+        }
+
+        System.out.println("Finished Vertical CRS Comparision");
+        System.out.println("Number of valid vertical crss found " + numberOfCorrectEntries);
+        System.out.println("Number of missing vertical crss found " + numberOfMissingEntries);
+        System.out.println("Number of invalid vertical crss found " + numberOfIncorrectEntries);
+        System.out.println("Number of vertical crss with exception thrown " + numberOfExceptionEntries);
+        if (numberOfIncorrectEntries > 0) {
+            Assert.fail("Some vertical crss in EPSG Database did not match what was in Apache SIS");
+        }
+    }
+
+    @Test
+    public void testProjectedCRS() throws Exception {
+        EpsgSqlFileReader reader = new EpsgSqlFileReader();
+        reader.parseDataFile(new File("C:\\Users\\Michael\\GIGS_TEST\\EPSG_DB_FILES\\EPSG-v9_9_1-PostgreSQL\\PostgreSQL_Data_Script.sql"));
+
+        int numberOfMissingEntries = 0;
+        int numberOfCorrectEntries = 0;
+        int numberOfIncorrectEntries = 0;
+        int numberOfExceptionEntries = 0;
+
+        CRSAuthorityFactory authorityFactory = CRS.getAuthorityFactory("EPSG");
+
+        Map<String, EpsgCrs> epsgCodeToProjectedCrsMap = reader.getEpsgCodeToProjectedCrsMap();
+        for (Map.Entry<String, EpsgCrs> currentEntry : epsgCodeToProjectedCrsMap.entrySet()) {
+            String epsgCode = currentEntry.getKey();
+            EpsgCrs epsgProjectedCrs = currentEntry.getValue();
+            try {
+                ProjectedCRS sisProjectedCrs = authorityFactory.createProjectedCRS(epsgCode);
+                if (sisProjectedCrs == null) {
+                    numberOfMissingEntries++;
+                    System.out.println("No match found for projected crs: " + epsgProjectedCrs.getEpsgCode() + ":" + epsgProjectedCrs.getName());
+                    continue;
+                }
+                if (!epsgProjectedCrs.nameMatches(sisProjectedCrs)) {
+                    System.out.println("Name mismatch for projected crs: " + epsgProjectedCrs.getEpsgCode() + ":" + epsgProjectedCrs.getName());
+                    numberOfIncorrectEntries++;
+                    continue;
+                }
+                GeodeticDatum datum = sisProjectedCrs.getDatum();
+                if (!epsgCodeMatchesSisObject(epsgProjectedCrs.getDatumCode(), datum)) {
+                    System.out.println("Datum mismatch for projected crs: " + epsgProjectedCrs.getEpsgCode() + ":" + epsgProjectedCrs.getName());
+                    numberOfIncorrectEntries++;
+                    continue;
+                }
+                CoordinateSystem coordinateSystem = sisProjectedCrs.getCoordinateSystem();
+                if (!epsgCodeMatchesSisObject(epsgProjectedCrs.getCoordSystemCode(), coordinateSystem)) {
+                    System.out.println("CS mismatch for projected crs: " + epsgProjectedCrs.getEpsgCode() + ":" + epsgProjectedCrs.getName());
+                    numberOfIncorrectEntries++;
+                    continue;
+                }
+
+                numberOfCorrectEntries++;
+            } catch (Exception ex) {
+                System.out.println("Exception occured for projected crs: " + epsgProjectedCrs.getEpsgCode() + ":" + epsgProjectedCrs.getName() + ":" + ex.getMessage());
+                numberOfExceptionEntries++;
+            }
+        }
+
+        System.out.println("Finished Projected CRS Comparision");
+        System.out.println("Number of valid projected crss found " + numberOfCorrectEntries);
+        System.out.println("Number of missing projected crss found " + numberOfMissingEntries);
+        System.out.println("Number of invalid projected crss found " + numberOfIncorrectEntries);
+        System.out.println("Number of projected crss with exception thrown " + numberOfExceptionEntries);
+        if (numberOfIncorrectEntries > 0) {
+            Assert.fail("Some projected crss in EPSG Database did not match what was in Apache SIS");
+        }
+    }
+
+    @Test
     public void testGeodeticCRS() throws Exception {
         EpsgSqlFileReader reader = new EpsgSqlFileReader();
         reader.parseDataFile(new File("C:\\Users\\Michael\\GIGS_TEST\\EPSG_DB_FILES\\EPSG-v9_9_1-PostgreSQL\\PostgreSQL_Data_Script.sql"));
@@ -294,10 +407,10 @@ public class FullEpsgDatasetTest {
 
         CRSAuthorityFactory authorityFactory = CRS.getAuthorityFactory("EPSG");
 
-        Map<String, EpsgGeodeticCrs> epsgCodeToGeodeticCrsMap = reader.getEpsgCodeToGeodeticCrsMap();
-        for (Map.Entry<String, EpsgGeodeticCrs> currentEntry : epsgCodeToGeodeticCrsMap.entrySet()) {
+        Map<String, EpsgCrs> epsgCodeToGeodeticCrsMap = reader.getEpsgCodeToGeodeticCrsMap();
+        for (Map.Entry<String, EpsgCrs> currentEntry : epsgCodeToGeodeticCrsMap.entrySet()) {
             String epsgCode = currentEntry.getKey();
-            EpsgGeodeticCrs epsgGeodeticCrs = currentEntry.getValue();
+            EpsgCrs epsgGeodeticCrs = currentEntry.getValue();
             try {
                 GeodeticCRS sisGeodeticCrs;
                 if (epsgGeodeticCrs.isGeocentric()) {
@@ -449,7 +562,7 @@ public class FullEpsgDatasetTest {
         return Math.abs(epsgComparisonValue - comparisonSisValue) < 1E-7;
     }
 
-    @Test
+    //@Test
     public void testUnits() throws Exception {
         EpsgSqlFileReader reader = new EpsgSqlFileReader();
         reader.parseDataFile(new File("C:\\Users\\Michael\\GIGS_TEST\\EPSG_DB_FILES\\EPSG-v9_9_1-PostgreSQL\\PostgreSQL_Data_Script.sql"));

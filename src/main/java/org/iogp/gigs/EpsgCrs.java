@@ -1,9 +1,9 @@
 package org.iogp.gigs;
 
 import org.opengis.referencing.ReferenceIdentifier;
-import org.opengis.referencing.crs.GeodeticCRS;
+import org.opengis.referencing.crs.SingleCRS;
 
-public class EpsgGeodeticCrs {
+public class EpsgCrs {
 
     private final String epsgCode;
     private final String name;
@@ -18,7 +18,7 @@ public class EpsgGeodeticCrs {
     private final boolean geocentric;
     private final String[] aliases;
 
-    public EpsgGeodeticCrs(String[] tokens, String[] aliases) {
+    public EpsgCrs(String[] tokens, String[] aliases) {
         this.epsgCode = tokens[0];
         this.name = tokens[1];
         this.areaOfUseEpsgCode = tokens[2];
@@ -76,8 +76,8 @@ public class EpsgGeodeticCrs {
     public boolean isGeocentric() {
         return geocentric;
     }
-
-    public boolean nameMatches(GeodeticCRS geodeticCrs) {
+    
+    public boolean nameMatches(SingleCRS geodeticCrs) {
         ReferenceIdentifier riName = geodeticCrs.getName();
         if (riName == null) {
             return false;
