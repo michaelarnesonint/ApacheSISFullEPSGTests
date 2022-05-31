@@ -306,9 +306,6 @@ public class EpsgSqlFileReader {
     private void parseCrsQuery(EpsgInsertQuery query) {
         String[] tokens = query.getValues();
         String epsgCode = tokens[0];
-        if (epsgCode.equals("6184")) {
-            System.out.println("HERE");
-        }
         
         List<String> aliasNames = new ArrayList<>();
         EpsgAliasIdentifier aliasIdentifier = new EpsgAliasIdentifier(EpsgInsertQuery.TableType.CRS, epsgCode);
